@@ -40,4 +40,5 @@ install:	cdda2ogg.pl cdda2ogg.1 cdda2ogg.ps cdda2ogg.html
 	gzip						${DESTDIR}/${PREFIX}/share/man/man1/cdda2ogg.1
 	install	-m 644	cdda2ogg.html ${DESTDIR}/${DOCDIR}/cdda2ogg/cdda2ogg.html
 	install	-m 644	cdda2ogg.ps	${DESTDIR}/${DOCDIR}/cdda2ogg/cdda2ogg.ps
+	install	-m 644	cdda2oggrc.sample	${DESTDIR}/${DOCDIR}/cdda2ogg/
 
