@@ -1,5 +1,8 @@
 #!/usr/bin/perl -w
 
+# Written 2001 by Richard Höchenberger
+#
+# License: GPL
 
 #
 # Adapt $mycdda2ogg_path !
@@ -7,97 +10,300 @@
 
 use Tk; # self explaning, huh ;-)
 use Tk::DialogBox;
+require Tk::Dialog;
+
+
+my $version="v0.3";
 
 my $cdda2ogg_path = "\/home\/richard\/project\/cdda2ogg\/cdda2ogg";
 
 my $holdwav = 0;
 
+my $bitrate_32 = 0;
+my $bitrate_48 = 0;
+my $bitrate_64_mono = 0;
+my $bitrate_64 = 0;
+my $bitrate_80 = 0;
+my $bitrate_80_mono = 0;
+my $bitrate_96 = 0;
 my $bitrate_112 = 0;
 my $bitrate_128 = 0;
+my $bitrate_140 = 0;
 my $bitrate_160 = 0;
 my $bitrate_192 = 0;
 my $bitrate_256 = 0;
 my $bitrate_350 = 0;
 
-my $cdda2ogg_params = " ";
+my $cdda2ogg_params = "";
 
 # draw the main window
 $mainw = new MainWindow(-title => "cdda2ogg GUI");
 
-# draw the bitrate selection frame
+# draw thje frame that includes the 2 bitrate selection frames
 my $bitrate_frame = $mainw->Frame(-relief => "groove",-borderwidth => "3")->pack(-padx => 5,pady => 5);
 
+# draw the _stereo_ bitrate selection frame
+my $bitrate_frame_stereo = $bitrate_frame->Frame(-relief => "groove",-borderwidth => "3")->pack(-padx => 5,pady => 5,-side => "left");
 
+# draw the _mono_ bitrate selection frame
+my $bitrate_frame_mono = $bitrate_frame->Frame(-relief => "groove",-borderwidth => "3")->pack(-padx => 5,pady => 5,-side => "right");
+
+# draw the frame where the exit and about buttons are placed
 my $exit_info_frame = $mainw->Frame(-relief => "groove",-borderwidt => "3")->pack(-side => "bottom",-padx => 15,pady => 15);
 
 
-# define a label for the frame and 'pack' it onto the screen
-my $bitrate_frame_label = $bitrate_frame->Label(-text => "Encode with bitrate")->pack();
+# define a label for the bitrate selection frame _stereo_ and 'pack'
+# it (the frame) onto the screen
+my $bitrate_frame_stereo_label = $bitrate_frame_stereo->Label(-text => "Encode with bitrate (STEREO)")->pack();
 
-# define the output frame and pack it onto the screen
+# define a label for the bitrate selection frame _mono_ and 'pack'
+# it (the frame) onto the screen
+my $bitrate_frame_mono_label = $bitrate_frame_mono->Label(-text => "Encode with bitrate (MONO)")->pack();
+
+# define the output frame
+# and pack it onto the screen
 my $output_frame = $mainw->Frame(-relief => "groove",-borderwidth => "3")->pack();
 
 # -----
 
 
+# draw the scrollbar for the output frame
 my $output_scrollbar = $output_frame->Scrollbar();
 $output_scrollbar->pack(-side => 'right', -fill => 'y');
 
-my $output_display = $output_frame->Text(-height => '10', -width => '40', -yscrollcommand => ['set', $output_scrollbar])->pack(-side => 'bottom', -expand => '1', -fill => 'both');
+# draw the output display
+my $output_display = $output_frame->Text(-height => '10', -width => '80', -yscrollcommand => ['set', $output_scrollbar])->pack(-side => 'bottom', -expand => '1', -fill => 'both');
+
 $output_scrollbar->configure(-command => ['yview', $output_display]);
 
 # print out a string into the output textfield
-$output_display->insert('end',"cdda2ogg output:\n");
+$output_display->insert('end',"This is cdda2ogg-gui, $version\n\ncdda2ogg output:\n");
 
-#draw the hold wave checkbutton
+# draw the hold wave frame
 my $holdwave_frame = $mainw->Frame(-relief => "groove",-borderwidth => "3")->pack(-padx => 5,pady => 5);
 
-
+# draw the encode button
 my $encode_button = $mainw->Button(-text => "Encode !!!",-command => sub {encode()})->pack(-fill => "x",-padx => 10,-pady => 10);
 
+# draw the exit button
 my $exit_button = $exit_info_frame->Button(-text => "Exit",
 -command => sub { exit } )->pack(-side => "left",-fill => "x");
 
-
+# draw the about button
 my $info_button = $exit_info_frame->Button(-text => "About",-command => sub {info()})->pack(-side => "right",-fill => "x");
 
+#
+# draw the bitrate selection radiobuttons
+#
 
-my $enc_112_kbps = $bitrate_frame->Radiobutton (-text => "112 kbps",-variable => \$bitrate_112,-value => 1,-command => sub {deselect_radiobuttons_112()});
+
+my $enc_32_kbps = $bitrate_frame_mono->Radiobutton (-text => "32 kbps",-variable => \$bitrate_32,-value => 1,-command => sub {deselect_radiobuttons_32()});
+$enc_32_kbps->pack();
+$enc_32_kbps->deselect;
+
+my $enc_48_kbps = $bitrate_frame_mono->Radiobutton (-text => "48 kbps",-variable => \$bitrate_48,-value => 1,-command => sub {deselect_radiobuttons_48()});
+$enc_48_kbps->pack();
+$enc_48_kbps->deselect;
+
+my $enc_64_kbps = $bitrate_frame_stereo->Radiobutton (-text => "64 kbps",-variable => \$bitrate_64,-value => 1,-command => sub {deselect_radiobuttons_64()});
+$enc_64_kbps->pack();
+$enc_64_kbps->deselect;
+
+my $enc_64_kbps_mono = $bitrate_frame_mono->Radiobutton (-text => "64 kbps",-variable => \$bitrate_64_mono,-value => 1,-command => sub {deselect_radiobuttons_64_mono()});
+$enc_64_kbps_mono->pack();
+$enc_64_kbps_mono->deselect;
+
+my $enc_80_kbps = $bitrate_frame_stereo->Radiobutton (-text => "80 kbps",-variable => \$bitrate_80,-value => 1,-command => sub {deselect_radiobuttons_80()});
+$enc_80_kbps->pack();
+$enc_80_kbps->deselect;
+
+my $enc_80_kbps_mono = $bitrate_frame_mono->Radiobutton (-text => "80 kbps",-variable => \$bitrate_80_mono,-value => 1,-command => sub {deselect_radiobuttons_80_mono()});
+$enc_80_kbps_mono->pack();
+$enc_80_kbps_mono->deselect;
+
+my $enc_96_kbps = $bitrate_frame_stereo->Radiobutton (-text => "96 kbps",-variable => \$bitrate_96,-value => 1,-command => sub {deselect_radiobuttons_96()});
+$enc_96_kbps->pack();
+$enc_96_kbps->deselect;
+
+my $enc_112_kbps = $bitrate_frame_mono->Radiobutton (-text => "112 kbps",-variable => \$bitrate_112,-value => 1,-command => sub {deselect_radiobuttons_112()});
 $enc_112_kbps->pack();
 $enc_112_kbps->deselect;
 
-my $enc_128_kbps = $bitrate_frame->Radiobutton (-text => "128 kbps",-variable => \$bitrate_128,-value => '1',-command => sub {deselect_radiobuttons_128()});
+my $enc_128_kbps = $bitrate_frame_stereo->Radiobutton (-text => "128 kbps",-variable => \$bitrate_128,-value => '1',-command => sub {deselect_radiobuttons_128()});
 $enc_128_kbps->pack();
 $enc_128_kbps->deselect;
 
-my $enc_160_kbps = $bitrate_frame->Radiobutton (-text => "160 kbps",-variable => \$bitrate_160,-value => '1',-command => sub {deselect_radiobuttons_160()});
+my $enc_140_kbps = $bitrate_frame_mono->Radiobutton (-text => "140 kbps",-variable => \$bitrate_140,-value => 1,-command => sub {deselect_radiobuttons_140()});
+$enc_140_kbps->pack();
+$enc_140_kbps->deselect;
+
+my $enc_160_kbps = $bitrate_frame_stereo->Radiobutton (-text => "160 kbps",-variable => \$bitrate_160,-value => '1',-command => sub {deselect_radiobuttons_160()});
 $enc_160_kbps->pack();
 $enc_160_kbps->select;
 
-my $enc_192_kbps = $bitrate_frame->Radiobutton (-text => "192 kbps",-variable => \$bitrate_192,-value => '1',-command => sub {deselect_radiobuttons_192()});
+my $enc_192_kbps = $bitrate_frame_stereo->Radiobutton (-text => "192 kbps",-variable => \$bitrate_192,-value => '1',-command => sub {deselect_radiobuttons_192()});
 $enc_192_kbps->pack();
 $enc_192_kbps->deselect;
 
-my $enc_256_kbps = $bitrate_frame->Radiobutton (-text => "256 kbps",-variable => \$bitrate_256,-value => '1',-command => sub {deselect_radiobuttons_256()});
+my $enc_256_kbps = $bitrate_frame_stereo->Radiobutton (-text => "256 kbps",-variable => \$bitrate_256,-value => '1',-command => sub {deselect_radiobuttons_256()});
 $enc_256_kbps->pack();
 $enc_256_kbps->deselect;
 
-my $enc_350_kbps = $bitrate_frame->Radiobutton (-text => "350 kbps",-variable => \$bitrate_350,-value => '1',-command => sub {deselect_radiobuttons_350()});
+my $enc_350_kbps = $bitrate_frame_stereo->Radiobutton (-text => "350 kbps",-variable => \$bitrate_350,-value => '1',-command => sub {deselect_radiobuttons_350()});
 $enc_350_kbps->pack();
 $enc_350_kbps->deselect;
 
 
-#$holdwave = $holdwave_frame->Checkbutton(-text => "Hold wav files",-command sub {holdwav()});
-
+# draw the holdwave checkbutton; store its state in $holdwave
 $holdwave = $holdwave_frame->Checkbutton(-text => "hold .wav files ",-variable => \$holdwav);
 
 $holdwave->pack(-side => "bottom");
 
+
 MainLoop;
+
+
+#
+# if a radiobutton is selected, the others need to be deselected.
+#
+
+sub deselect_radiobuttons_32 { #deselect all radiobuttons but 32
+
+$enc_48_kbps->deselect;
+$enc_64_kbps->deselect;
+$enc_64_kbps_mono->deselect;
+$enc_80_kbps->deselect;
+$enc_80_kbps_mono->deselect;
+$enc_96_kbps->deselect;
+$enc_112_kbps->deselect;
+$enc_128_kbps->deselect;
+$enc_140_kbps->deselect;
+$enc_160_kbps->deselect;
+$enc_192_kbps->deselect;
+$enc_256_kbps->deselect;
+$enc_350_kbps->deselect;
+
+}
+
+sub deselect_radiobuttons_48 { #deselect all radiobuttons but 48
+
+$enc_32_kbps->deselect;
+$enc_64_kbps->deselect;
+$enc_64_kbps_mono->deselect;
+$enc_80_kbps->deselect;
+$enc_80_kbps_mono->deselect;
+$enc_96_kbps->deselect;
+$enc_112_kbps->deselect;
+$enc_128_kbps->deselect;
+$enc_140_kbps->deselect;
+$enc_160_kbps->deselect;
+$enc_192_kbps->deselect;
+$enc_256_kbps->deselect;
+$enc_350_kbps->deselect;
+
+}
+
+sub deselect_radiobuttons_64 { #deselect all radiobuttons but 64 stereo
+
+$enc_32_kbps->deselect;
+$enc_48_kbps->deselect;
+$enc_64_kbps_mono->deselect;
+$enc_80_kbps->deselect;
+$enc_80_kbps_mono->deselect;
+$enc_96_kbps->deselect;
+$enc_112_kbps->deselect;
+$enc_128_kbps->deselect;
+$enc_140_kbps->deselect;
+$enc_160_kbps->deselect;
+$enc_192_kbps->deselect;
+$enc_256_kbps->deselect;
+$enc_350_kbps->deselect;
+
+}
+
+sub deselect_radiobuttons_64_mono { #deselect all radiobuttons but 64 mono
+
+$enc_32_kbps->deselect;
+$enc_48_kbps->deselect;
+$enc_64_kbps->deselect;
+$enc_80_kbps->deselect;
+$enc_80_kbps_mono->deselect;
+$enc_96_kbps->deselect;
+$enc_112_kbps->deselect;
+$enc_128_kbps->deselect;
+$enc_140_kbps->deselect;
+$enc_160_kbps->deselect;
+$enc_192_kbps->deselect;
+$enc_256_kbps->deselect;
+$enc_350_kbps->deselect;
+
+}
+
+sub deselect_radiobuttons_80 { #deselect all radiobuttons but 80 stereo
+
+$enc_32_kbps->deselect;
+$enc_48_kbps->deselect;
+$enc_64_kbps->deselect;
+$enc_64_kbps_mono->deselect;
+$enc_80_kbps_mono->deselect;
+$enc_96_kbps->deselect;
+$enc_112_kbps->deselect;
+$enc_128_kbps->deselect;
+$enc_140_kbps->deselect;
+$enc_160_kbps->deselect;
+$enc_192_kbps->deselect;
+$enc_256_kbps->deselect;
+$enc_350_kbps->deselect;
+
+}
+
+sub deselect_radiobuttons_80_mono { #deselect all radiobuttons but 80 mono
+
+$enc_32_kbps->deselect;
+$enc_48_kbps->deselect;
+$enc_64_kbps->deselect;
+$enc_64_kbps_mono->deselect;
+$enc_80_kbps->deselect;
+$enc_96_kbps->deselect;
+$enc_112_kbps->deselect;
+$enc_128_kbps->deselect;
+$enc_140_kbps->deselect;
+$enc_160_kbps->deselect;
+$enc_192_kbps->deselect;
+$enc_256_kbps->deselect;
+$enc_350_kbps->deselect;
+
+}
+
+sub deselect_radiobuttons_96 { #deselect all radiobuttons but 96
+
+$enc_32_kbps->deselect;
+$enc_48_kbps->deselect;
+$enc_64_kbps->deselect;
+$enc_64_kbps_mono->deselect;
+$enc_80_kbps->deselect;
+$enc_80_kbps_mono->deselect;
+$enc_112_kbps->deselect;
+$enc_128_kbps->deselect;
+$enc_140_kbps->deselect;
+$enc_160_kbps->deselect;
+$enc_192_kbps->deselect;
+$enc_256_kbps->deselect;
+$enc_350_kbps->deselect;
+
+}
 
 sub deselect_radiobuttons_112 { #deselect all radiobuttons but 112
 
+$enc_32_kbps->deselect;
+$enc_48_kbps->deselect;
+$enc_64_kbps->deselect;
+$enc_64_kbps_mono->deselect;
+$enc_80_kbps->deselect;
+$enc_80_kbps_mono->deselect;
+$enc_96_kbps->deselect;
 $enc_128_kbps->deselect;
+$enc_140_kbps->deselect;
 $enc_160_kbps->deselect;
 $enc_192_kbps->deselect;
 $enc_256_kbps->deselect;
@@ -108,7 +314,15 @@ $enc_350_kbps->deselect;
 
 sub deselect_radiobuttons_128 { #deselect all radiobuttons but 128
 
+$enc_32_kbps->deselect;
+$enc_48_kbps->deselect;
+$enc_64_kbps->deselect;
+$enc_64_kbps_mono->deselect;
+$enc_80_kbps->deselect;
+$enc_80_kbps_mono->deselect;
+$enc_96_kbps->deselect;
 $enc_112_kbps->deselect;
+$enc_140_kbps->deselect;
 $enc_160_kbps->deselect;
 $enc_192_kbps->deselect;
 $enc_256_kbps->deselect;
@@ -116,10 +330,37 @@ $enc_350_kbps->deselect;
 
 }
 
-sub deselect_radiobuttons_160 { #deselect all radiobuttons but 160
+sub deselect_radiobuttons_140 { #deselect all radiobuttons but 140
 
+$enc_32_kbps->deselect;
+$enc_48_kbps->deselect;
+$enc_64_kbps->deselect;
+$enc_64_kbps_mono->deselect;
+$enc_80_kbps->deselect;
+$enc_80_kbps_mono->deselect;
+$enc_96_kbps->deselect;
 $enc_112_kbps->deselect;
 $enc_128_kbps->deselect;
+$enc_160_kbps->deselect;
+$enc_192_kbps->deselect;
+$enc_256_kbps->deselect;
+$enc_350_kbps->deselect;
+
+}
+
+
+sub deselect_radiobuttons_160 { #deselect all radiobuttons but 160
+
+$enc_32_kbps->deselect;
+$enc_48_kbps->deselect;
+$enc_64_kbps->deselect;
+$enc_64_kbps_mono->deselect;
+$enc_80_kbps->deselect;
+$enc_80_kbps_mono->deselect;
+$enc_96_kbps->deselect;
+$enc_112_kbps->deselect;
+$enc_128_kbps->deselect;
+$enc_140_kbps->deselect;
 $enc_192_kbps->deselect;
 $enc_256_kbps->deselect;
 $enc_350_kbps->deselect;
@@ -128,8 +369,16 @@ $enc_350_kbps->deselect;
 
 sub deselect_radiobuttons_192 { #deselect all radiobuttons but 192
 
+$enc_32_kbps->deselect;
+$enc_48_kbps->deselect;
+$enc_64_kbps->deselect;
+$enc_64_kbps_mono->deselect;
+$enc_80_kbps->deselect;
+$enc_80_kbps_mono->deselect;
+$enc_96_kbps->deselect;
 $enc_112_kbps->deselect;
 $enc_128_kbps->deselect;
+$enc_140_kbps->deselect;
 $enc_160_kbps->deselect;
 $enc_256_kbps->deselect;
 $enc_350_kbps->deselect;
@@ -139,8 +388,16 @@ $enc_350_kbps->deselect;
 
 sub deselect_radiobuttons_256 { #deselect all radiobuttons but 256
 
+$enc_32_kbps->deselect;
+$enc_48_kbps->deselect;
+$enc_64_kbps->deselect;
+$enc_64_kbps_mono->deselect;
+$enc_80_kbps->deselect;
+$enc_80_kbps_mono->deselect;
+$enc_96_kbps->deselect;
 $enc_112_kbps->deselect;
 $enc_128_kbps->deselect;
+$enc_140_kbps->deselect;
 $enc_160_kbps->deselect;
 $enc_192_kbps->deselect;
 $enc_350_kbps->deselect;
@@ -149,8 +406,16 @@ $enc_350_kbps->deselect;
 
 sub deselect_radiobuttons_350 { #deselect all radiobuttons but 350
 
+$enc_32_kbps->deselect;
+$enc_48_kbps->deselect;
+$enc_64_kbps->deselect;
+$enc_64_kbps_mono->deselect;
+$enc_80_kbps->deselect;
+$enc_80_kbps_mono->deselect;
+$enc_96_kbps->deselect;
 $enc_112_kbps->deselect;
 $enc_128_kbps->deselect;
+$enc_140_kbps->deselect;
 $enc_160_kbps->deselect;
 $enc_192_kbps->deselect;
 $enc_256_kbps->deselect;
@@ -160,12 +425,28 @@ $enc_256_kbps->deselect;
 
 sub encode {
 
-my $cdda2ogg_params="";
+my $cdda2ogg_params = "";
 
 
   if ($holdwav != 0) {
     $cdda2ogg_params = ("$cdda2ogg_params -holdwav");
   }
+
+if ($bitrate_32 != 0) {
+  $cdda2ogg_params = ("$cdda2ogg_params -b 32");
+}
+
+if ($bitrate_64 != 0) {
+  $cdda2ogg_params = ("$cdda2ogg_params -b 64");
+}
+
+if ($bitrate_80 != 0) {
+  $cdda2ogg_params = ("$cdda2ogg_params -b 80");
+}
+
+if ($bitrate_96 != 0) {
+  $cdda2ogg_params = ("$cdda2ogg_params -b 96");
+}
 
 if ($bitrate_112 != 0) {
   $cdda2ogg_params = ("$cdda2ogg_params -b 112");
@@ -175,10 +456,13 @@ if ($bitrate_128 != 0) {
   $cdda2ogg_params = ("$cdda2ogg_params -b 128");
 }
 
+if ($bitrate_140 != 0) {
+  $cdda2ogg_params = ("$cdda2ogg_params -b 140");
+}
+
 if ($bitrate_160 != 0) {
   $cdda2ogg_params = ("$cdda2ogg_params -b 160");
 }
-
 
 if ($bitrate_192 != 0) {
   $cdda2ogg_params = ("$cdda2ogg_params -b 192");
@@ -195,21 +479,61 @@ if ($bitrate_350 != 0) {
 }
 
 
-$cdda2ogg_call = "$cdda2ogg_path $cdda2ogg_params -v";
+$cdda2ogg_call = "$cdda2ogg_path $cdda2ogg_params -v -e";
 
-# $outpit_display->fileevent(H, 'readable', [\&, $t]);
+#$ls = "/bin/ls /home/richard/project|";
 
-my @shell_output;
+#print $cdda2ogg_params;
+#print $bitrate_160;
+#my @shell_output;
 
-open(LS, "$cdda2ogg_call|");
-  while(<LS>) {
-    push(@shell_output, $_);
-    #print @shell_output;
-    $output_display->insert('end',"$shell_output");
-    $output_display->yview('end');
-  }
+#open(LS, "ls|");
+# while(<LS>) {
+#  push(@shell_output, $_);
+# #print @shell_output;
+#$output_display->insert('end',"@shell_output[0..1]");
+#$output_display->yview('end');
+#}
 
-close(LS);
+#close(LS);
+
+#open TRIN, "$cdda2ogg_call" or die "Cannot execute cdda2ogg :$!";
+
+#$output_display->insert('end',"$. $_");
+#$output_display->yview('end');
+
+#while (<TRIN>) {
+  #$output_display->insert('end',"$. $_");
+  #$output_display->yview('end');
+  #print "$. $_";
+#}
+
+# my $encoding_window = $mainw->Popup (-title => 'Encoding...',-text => "Cdda2ogg is currently\nencoding your disc.\nThis may take some time.");
+#my $choice_1 = $encoding_window->Show;
+
+$encoding_window = new MainWindow(-title => "Encoding...");
+my $encoding_label = $encoding_window->Label (- text => "\nCdda2ogg is currently\nencoding your Disc.\nThis may take some time!\n\nUse \'top\' to see what's\ngoing on with your machine.\n\n");
+$encoding_label->pack();
+
+# usleep(1);
+
+#system ("$cdda2ogg_call");
+
+
+open TRIN, "$cdda2ogg_call |" or die "Cannot execute cdda2ogg :$!";
+
+#$output_display->insert('end',"$. $_");
+#$output_display->yview('end');
+
+while (<TRIN>) {
+  $output_display->insert('end',"$. $_");
+  $output_display->yview('end');
+  #print "$. $_";
+}
+
+#system ($cdda2ogg_call);
+
+#&alarm;
 
 }
 
@@ -218,7 +542,33 @@ sub info {
 
   my $info_window = $mainw->Dialog (-title => 'About cdda2ogg-gui',-text => "This program was written\nby Richard Hoechenberger\n<GeekuX\@web.de>.\n\nThis program can be\ndistributed under the\nterms of the GNU General\nPublic License (GPL).",-default_button => 'OK',-buttons        => ['OK']);
  
- my $choice = $info_window->Show;  # use Show for Tk-b9.01 
- # print $choice;
+  my $choice = $info_window->Show;
 
 }
+
+
+# alarm; send me a SIGALRM in this many seconds (fractions ok)
+# tom christiansen <tchrist@convex.com>
+sub alarm {
+  require 'syscall.ph';
+  require 'time.ph';
+
+  local($ticks) = @_;
+  local($in_timer,$out_timer);
+  local($isecs, $iusecs, $secs, $usecs);
+
+  local($itimer_t) = 'L4'; # should be &itimer'typedef()
+
+  $secs = int($ticks);
+  $usecs = ($ticks - $secs) * 1e6;
+
+  $out_timer = pack($itimer_t,0,0,0,0);
+  $in_timer  = pack($itimer_t,0,0,$secs,$usecs);
+
+  syscall(&SYS_setitimer, &ITIMER_REAL, $in_timer, $out_timer)
+    && die "alarm: setitimer syscall failed: $!";
+
+  ($isecs, $iusecs, $secs, $usecs) = unpack($itimer_t,$out_timer);
+  return $secs + ($usecs/1e6);
+}
+
