@@ -359,7 +359,7 @@ sub parse_command_line {
             if ($_[0] eq "all") {
                 shift; $all=1;              # whole disc?
             }
-            elsif ($_[0] =~ m/(([1-9],?)+)/) {
+            elsif ($_[0] =~ m/(([0-9],?)+)/) {
                 shift; @riptracks=split /,/, $1;       # some tracks
             } else {
                 print STDERR "Unrecognized option: $_[0]\n\n";
