@@ -3,16 +3,16 @@
 [see below for English version of this document!]
 
 Beschreibung:
-CDDA2OGG.pl ist ein kleines Perlscript, welches man zum 
+CDDA2OGG ist ein kleines Perlscript, welches man zum 
 grabben von Audio-CD's und encoden in Ogg/Vorbis verwenden kann. 
 
-Autoren:      Waldemar Brodkorb <waldemar.brodkorb@web.de>
+Autoren:      Waldemar Brodkorb <waldemar@thinknow.de>
               Richard Höchenberger <GeekuX@web.de>
 
 Linzenz:      GPL 2
 
-Features:     CDDB-Suppurt
-           
+Features:     CDDB-Support
+                 
               In Planung:
    
               Frei wählbare Bezeichnung der Ogg-Files
@@ -25,12 +25,19 @@ Benötigt:     cdparanoia      (http://www.xiph.org/paranoia/down.html)
               vorbis-tools    (http://www.vorbis.com/download.psp)
               libfreedb-perl  (http://www.red-bean.com/~bwf/software/FreeDB/)
 
+Installation:  
+Um das Skript und die Dokumentation zu installieren, einfach 
+make install ausführen. 
+Falls der Zielverzeichnis oder das Prefix geändert werden soll:
+make DESTDIR=/tmp PREFIX=usr install
+
+
 -----------------------------------------------------------
 
 [English Version:]
 
 Description:
-CDDA2OGG.pl is a small script written in Perl. It can be used 
+CDDA2OGG is a small script written in Perl. It can be used 
 to rip Audio CDs and encode the songs as Ogg/Vorbis file.
 
 Authors:      Waldemar Brodkorb <waldemar.brodkorb@web.de>
@@ -51,6 +58,7 @@ depends on:    cdparanoia      (http://www.xiph.org/paranoia/down.html)
                vorbis-tools    (http://www.vorbis.com/download.psp)
                libfreedb-perl  (http://www.red-bean.com/~bwf/software/FreeDB/)
 
+Installation:
 
-
+FIXME please
 
