@@ -7,6 +7,9 @@ echo '
     </head>
 
     <body>
+    <a href="http://developer.berlios.de/"><img
+    src="http://developer.berlios.de/sflogo.php?group_id=156&type=1" width="118" height="52"
+    border="0" alt="BerliOS Logo"></a>
     <p>
     <b>Beschreibung:</b><br>
     CDDA2OGG ist ein kleines Perlscript, das man zum<br>
