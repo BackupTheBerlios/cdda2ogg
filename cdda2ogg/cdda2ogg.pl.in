@@ -72,6 +72,7 @@ my $success = 0;
 my $answer = "";
 my $all = 0;
 my @riptracks;
+my $output;
 
 #
 # the main program starts here
@@ -169,12 +170,9 @@ sub rip_and_encode {
     my $total;  # total sum of tracks to rip
     my @tracks; # array of integers, tracks to rip
     my $command; # execute this
-    
-    # print artist and disc title, but only when known
-    if ($artist && $disc_title) {       
-        &print_disc_title;  
-    }
-    
+   
+    print STDERR "$output\n";
+   
     # how the function is called 
     if (@_) {
         unless (ref($total_tracks)) {
@@ -197,6 +195,11 @@ sub rip_and_encode {
         $trackname_prefix=$_[1];
     }
     
+    # print artist and disc title, but only when known
+    if ($artist && $disc_title) {       
+        &print_disc_title;  
+    }
+   
     # be verbose or quit
     if ( $verbose != 0 ) {
         $null = "";
@@ -220,11 +223,19 @@ sub rip_and_encode {
     }
 
     for (my $i=1; $i <= $total; $i++) {
+        
+        if (!$output) {
+        
+            if (! $trackname_prefix ) {
+                $trackname="$artist - $titles[$i-1]";
+            } else {
+                $trackname="$trackname_prefix$tracks[$i-1]";
+            }
             
-        if (! $trackname_prefix ) {
-            $trackname="$artist - $titles[$i-1]";
-        } else {
-            $trackname="$trackname_prefix$tracks[$i-1]";
+        } else {  
+               
+            $trackname=printf("$output");
+        
         }
 
         $command = "$cdparanoia $cdpflags $tracks[$i-1] \"$trackname.wav\" $null ";
@@ -353,6 +364,9 @@ sub parse_command_line {
             elsif ($_[0] eq "-d" or $_[0] eq "--device") {
                 shift; $cdrom = shift;      # ripping device
             }
+            elsif ($_[0] eq "-o" or $_[0] eq "--output") {
+                shift; $output = shift;      # output format
+            }
             elsif ($_[0] eq "-n" or $_[0] eq "--nocddb") {
                 shift; $nocddb = 1;         # do not use CDDB if 1
             }
@@ -424,6 +438,10 @@ sub usage {
 usage: $cdda2ogg [options] tracks 
         
 options:
+  -o or --output "format"    read "format" as cdda2ogg output format, please do not forget ""
+                             %%a => Artist , %%d => Disctitle
+                             %%t => Title  , %%n => Tracknumber
+                             [default="%%a - %%t"]
   -c or --config <filename>  read <filename> as cdda2ogg configuration file
   -r or --ripper <path>      specify <path> to ripper
                              [default=/usr/bin/cdparanoia]
@@ -519,6 +537,7 @@ sub get_disc_name {
 # ask for tracktitles, returns an array 
 #
 
+# FIXME
 sub get_track_name {
     if ( ! @riptracks ) {
         for (my $i=1; $i <= $total_tracks; $i++) {
