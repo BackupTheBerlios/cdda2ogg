@@ -1,4 +1,3 @@
-<?php
 
 echo '
 
@@ -10,7 +9,7 @@ echo '
     <body>
     <p>
     <b>Beschreibung:</b><br>
-    CDDA2OGG ist ein kleines Perlscript, welches man zum<br>
+    CDDA2OGG ist ein kleines Perlscript, das man zum<br>
     Grabben von Audio-CD\'s und Encoden in Ogg/Vorbis verwenden kann.<br>
 
     Autoren:<br>  <a href="mailto:waldemar.brodkorb@web.de"> 
