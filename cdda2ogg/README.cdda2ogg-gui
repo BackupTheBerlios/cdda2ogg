@@ -1,0 +1,10 @@
+Description: cdda2ogg-gui is a graphical frontend for the
+             famous Perl script 'cdda2ogg'. 
+             It is written in Perl/Tk.
+
+Author:      Richard Höchenberger <Geekux@web.de>
+
+License:     GNU General Public License
+
+Requires:    cdda2ogg
+             Perl/Tk

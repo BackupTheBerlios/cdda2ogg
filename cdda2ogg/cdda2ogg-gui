@@ -1,0 +1,224 @@
+#!/usr/bin/perl -w
+
+
+#
+# Adapt $mycdda2ogg_path !
+#
+
+use Tk; # self explaning, huh ;-)
+use Tk::DialogBox;
+
+my $cdda2ogg_path = "\/home\/richard\/project\/cdda2ogg\/cdda2ogg";
+
+my $holdwav = 0;
+
+my $bitrate_112 = 0;
+my $bitrate_128 = 0;
+my $bitrate_160 = 0;
+my $bitrate_192 = 0;
+my $bitrate_256 = 0;
+my $bitrate_350 = 0;
+
+my $cdda2ogg_params = " ";
+
+# draw the main window
+$mainw = new MainWindow(-title => "cdda2ogg GUI");
+
+# draw the bitrate selection frame
+my $bitrate_frame = $mainw->Frame(-relief => "groove",-borderwidth => "3")->pack(-padx => 5,pady => 5);
+
+
+my $exit_info_frame = $mainw->Frame(-relief => "groove",-borderwidt => "3")->pack(-side => "bottom",-padx => 15,pady => 15);
+
+
+# define a label for the frame and 'pack' it onto the screen
+my $bitrate_frame_label = $bitrate_frame->Label(-text => "Encode with bitrate")->pack();
+
+# define the output frame and pack it onto the screen
+my $output_frame = $mainw->Frame(-relief => "groove",-borderwidth => "3")->pack();
+
+# -----
+
+
+my $output_scrollbar = $output_frame->Scrollbar();
+$output_scrollbar->pack(-side => 'right', -fill => 'y');
+
+my $output_display = $output_frame->Text(-height => '10', -width => '40', -yscrollcommand => ['set', $output_scrollbar])->pack(-side => 'bottom', -expand => '1', -fill => 'both');
+$output_scrollbar->configure(-command => ['yview', $output_display]);
+
+# print out a string into the output textfield
+$output_display->insert('end',"cdda2ogg output:\n");
+
+#draw the hold wave checkbutton
+my $holdwave_frame = $mainw->Frame(-relief => "groove",-borderwidth => "3")->pack(-padx => 5,pady => 5);
+
+
+my $encode_button = $mainw->Button(-text => "Encode !!!",-command => sub {encode()})->pack(-fill => "x",-padx => 10,-pady => 10);
+
+my $exit_button = $exit_info_frame->Button(-text => "Exit",
+-command => sub { exit } )->pack(-side => "left",-fill => "x");
+
+
+my $info_button = $exit_info_frame->Button(-text => "About",-command => sub {info()})->pack(-side => "right",-fill => "x");
+
+
+my $enc_112_kbps = $bitrate_frame->Radiobutton (-text => "112 kbps",-variable => \$bitrate_112,-value => 1,-command => sub {deselect_radiobuttons_112()});
+$enc_112_kbps->pack();
+$enc_112_kbps->deselect;
+
+my $enc_128_kbps = $bitrate_frame->Radiobutton (-text => "128 kbps",-variable => \$bitrate_128,-value => '1',-command => sub {deselect_radiobuttons_128()});
+$enc_128_kbps->pack();
+$enc_128_kbps->deselect;
+
+my $enc_160_kbps = $bitrate_frame->Radiobutton (-text => "160 kbps",-variable => \$bitrate_160,-value => '1',-command => sub {deselect_radiobuttons_160()});
+$enc_160_kbps->pack();
+$enc_160_kbps->select;
+
+my $enc_192_kbps = $bitrate_frame->Radiobutton (-text => "192 kbps",-variable => \$bitrate_192,-value => '1',-command => sub {deselect_radiobuttons_192()});
+$enc_192_kbps->pack();
+$enc_192_kbps->deselect;
+
+my $enc_256_kbps = $bitrate_frame->Radiobutton (-text => "256 kbps",-variable => \$bitrate_256,-value => '1',-command => sub {deselect_radiobuttons_256()});
+$enc_256_kbps->pack();
+$enc_256_kbps->deselect;
+
+my $enc_350_kbps = $bitrate_frame->Radiobutton (-text => "350 kbps",-variable => \$bitrate_350,-value => '1',-command => sub {deselect_radiobuttons_350()});
+$enc_350_kbps->pack();
+$enc_350_kbps->deselect;
+
+
+#$holdwave = $holdwave_frame->Checkbutton(-text => "Hold wav files",-command sub {holdwav()});
+
+$holdwave = $holdwave_frame->Checkbutton(-text => "hold .wav files ",-variable => \$holdwav);
+
+$holdwave->pack(-side => "bottom");
+
+MainLoop;
+
+sub deselect_radiobuttons_112 { #deselect all radiobuttons but 112
+
+$enc_128_kbps->deselect;
+$enc_160_kbps->deselect;
+$enc_192_kbps->deselect;
+$enc_256_kbps->deselect;
+$enc_350_kbps->deselect;
+
+}
+
+
+sub deselect_radiobuttons_128 { #deselect all radiobuttons but 128
+
+$enc_112_kbps->deselect;
+$enc_160_kbps->deselect;
+$enc_192_kbps->deselect;
+$enc_256_kbps->deselect;
+$enc_350_kbps->deselect;
+
+}
+
+sub deselect_radiobuttons_160 { #deselect all radiobuttons but 160
+
+$enc_112_kbps->deselect;
+$enc_128_kbps->deselect;
+$enc_192_kbps->deselect;
+$enc_256_kbps->deselect;
+$enc_350_kbps->deselect;
+
+}
+
+sub deselect_radiobuttons_192 { #deselect all radiobuttons but 192
+
+$enc_112_kbps->deselect;
+$enc_128_kbps->deselect;
+$enc_160_kbps->deselect;
+$enc_256_kbps->deselect;
+$enc_350_kbps->deselect;
+
+}
+
+
+sub deselect_radiobuttons_256 { #deselect all radiobuttons but 256
+
+$enc_112_kbps->deselect;
+$enc_128_kbps->deselect;
+$enc_160_kbps->deselect;
+$enc_192_kbps->deselect;
+$enc_350_kbps->deselect;
+
+}
+
+sub deselect_radiobuttons_350 { #deselect all radiobuttons but 350
+
+$enc_112_kbps->deselect;
+$enc_128_kbps->deselect;
+$enc_160_kbps->deselect;
+$enc_192_kbps->deselect;
+$enc_256_kbps->deselect;
+
+}
+
+
+sub encode {
+
+my $cdda2ogg_params="";
+
+
+  if ($holdwav != 0) {
+    $cdda2ogg_params = ("$cdda2ogg_params -holdwav");
+  }
+
+if ($bitrate_112 != 0) {
+  $cdda2ogg_params = ("$cdda2ogg_params -b 112");
+}
+
+if ($bitrate_128 != 0) {
+  $cdda2ogg_params = ("$cdda2ogg_params -b 128");
+}
+
+if ($bitrate_160 != 0) {
+  $cdda2ogg_params = ("$cdda2ogg_params -b 160");
+}
+
+
+if ($bitrate_192 != 0) {
+  $cdda2ogg_params = ("$cdda2ogg_params -b 192");
+}
+
+
+if ($bitrate_256 != 0) {
+  $cdda2ogg_params = ("$cdda2ogg_params -b 256");
+}
+
+
+if ($bitrate_350 != 0) {
+  $cdda2ogg_params = ("$cdda2ogg_params -b 350");
+}
+
+
+$cdda2ogg_call = "$cdda2ogg_path $cdda2ogg_params -v";
+
+# $outpit_display->fileevent(H, 'readable', [\&, $t]);
+
+my @shell_output;
+
+open(LS, "$cdda2ogg_call|");
+  while(<LS>) {
+    push(@shell_output, $_);
+    #print @shell_output;
+    $output_display->insert('end',"$shell_output");
+    $output_display->yview('end');
+  }
+
+close(LS);
+
+}
+
+
+sub info {
+
+  my $info_window = $mainw->Dialog (-title => 'About cdda2ogg-gui',-text => "This program was written\nby Richard Hoechenberger\n<GeekuX\@web.de>.\n\nThis program can be\ndistributed under the\nterms of the GNU General\nPublic License (GPL).",-default_button => 'OK',-buttons        => ['OK']);
+ 
+ my $choice = $info_window->Show;  # use Show for Tk-b9.01 
+ # print $choice;
+
+}

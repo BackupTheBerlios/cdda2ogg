@@ -1,0 +1,56 @@
+                C D D A 2 O G G
+                
+[see below for English version of this document!]
+
+Beschreibung:
+CDDA2OGG.pl ist ein kleines Perlscript, welches man zum 
+grabben von Audio-CD's und encoden in Ogg/Vorbis verwenden kann. 
+
+Autoren:      Waldemar Brodkorb <waldemar.brodkorb@web.de>
+              Richard Höchenberger <GeekuX@web.de>
+
+Linzenz:      GPL 2
+
+Features:     CDDB-Suppurt
+           
+              In Planung:
+   
+              Frei wählbare Bezeichnung der Ogg-Files
+                (Reihenfolge von Interpret, Album etc.
+                 im Namen der codierten Datei/en)
+              
+
+Benötigt:     cdparanoia      (http://www.xiph.org/paranoia/down.html)
+              perl            (http://www.perl.com/pub/a/language/info/software.html)
+              vorbis-tools    (http://www.vorbis.com/download.psp)
+              libfreedb-perl  (http://www.red-bean.com/~bwf/software/FreeDB/)
+
+-----------------------------------------------------------
+
+[English Version:]
+
+Description:
+CDDA2OGG.pl is a small script written in Perl. It can be used 
+to rip Audio CDs and encode the songs as Ogg/Vorbis file.
+
+Authors:      Waldemar Brodkorb <waldemar.brodkorb@web.de>
+              Richard Höchenberger <GeekuX@web.de>
+
+License:      GPL 2
+
+Features:     CDDB support
+
+              planned:
+
+              freely chooseable file names of Ogg files
+                (order of artist, album etc.
+                 in/as name of the encoded file(s))
+
+depends on:    cdparanoia      (http://www.xiph.org/paranoia/down.html)
+               perl            (http://www.perl.com/pub/a/language/info/software.html)
+               vorbis-tools    (http://www.vorbis.com/download.psp)
+               libfreedb-perl  (http://www.red-bean.com/~bwf/software/FreeDB/)
+
+
+
+
