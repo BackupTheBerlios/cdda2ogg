@@ -25,42 +25,48 @@
 use strict;
 use FreeDB::FreeDB;
 
-my $author = "Waldemar Brodkorb <waldemar\@thinknow.de>\nRichard Höchenberger <GeekuX\@web.de>";
+#
+# global vars
+#
 
+my $author = "Waldemar Brodkorb <waldemar\@thinknow.de>\nRichard Höchenberger <GeekuX\@web.de>";
 my $cdda2ogg = $0; $cdda2ogg =~ s/.*\/([^\/]+)$/$1/;
 my $version = "%%VERSION%%";
 my $HOME = $ENV{HOME};
-
+# to switch on debugging set to 1
+my $debug = 0;
 
 #
 # programs & default flags
 #
 
+my $cdrom = "/dev/cdrom";
+
 my $cdparanoia = `which cdparanoia`; $cdparanoia =~ s/\n//;
 my $cdpflags_default = "";
-my $cdpflags = $cdpflags_default;
+my $cdpflags;
 
 my $bitrate = "160";
 
 my $oggenc = `which oggenc`; $oggenc =~ s/\n//;
-my $oggencflags_default = "-b $bitrate";
-my $oggencflags = $oggencflags_default;
+my $oggencflags_default = "";
+my $oggencflags;
 
 my $trackname_default = "track";
 my $trackname = "$trackname_default";
 
 my $holdwav = 0;
-my $cdrom = "/dev/cdrom";
 
 my $cddbserver = "http://freedb.freedb.org/cgi-bin/cddb.cgi";
 my $nocddb = 0;
 
 my $artist;
 my $disc_title;
-my @tracks;
+my @titles;
 my $total_tracks;
 
-my $quiet = "2>&1 > /dev/null";
+my $quite = 0;
+my $null = "2>&1 > /dev/null";
 my $verbose = 0;
 my $success = 0;
 my $answer = "";
@@ -89,74 +95,68 @@ if ($#ARGV == -1) {
     if ($all == 0 && ! @riptracks) {
         &version; 
         print usage();
-        print "\n ------  What do you want to rip, geek? ------ \n\n";
-        #print "$#riptracks\n";
+        print "\n --------------------------------------------- \n";
+        print "\n ------  What do you want to rip, geek? ------ \n";
+        print "\n --------------------------------------------- \n";
         exit 1;
     }
     
     # check if encoder and ripper exists
     &check_apps;
 
-    if ( $nocddb == 0 ) {
-        # try to find discinfo from cddbserver
-        &get_cdda_infos;
-        
-        if ($success == 0) {
-            # get total amount of tracks
-            &get_disc_tracks;
-            # if not successful, ask user for artist and tracknames
-            &get_cddb_input;
-            
-            if ( $answer eq "y" or $answer eq "Y" ) {
-                &get_artist_name;
-                &get_disc_name;
-                # get all names if you rip whole disc 
-                if ( ! @riptracks ) {
-                    &get_track_name($total_tracks);
-                } else {
-                    &get_track_name($#riptracks);
-                }
-                
-                &rip_and_encode($total_tracks);
+    # what tracks to rip 
+    if ($debug == 1) {
+        print STDERR "Commandline arguments for tracks to rip: @riptracks\n";
+    }    
 
-            } else {
-                
-                &rip_and_encode($total_tracks,$trackname);
-            
-            }
-            
-        } else {
-            # if successful rip and encode
-            &rip_and_encode;
-            
-        }
-
+    if ( ! @riptracks ) {
+        $total_tracks = &get_disc_tracks; # get total sum of tracks with function
     } else {
-        # if -x, no cddb server is asked, begin with ripping
+        $total_tracks = \@riptracks;      # total_tracks is a reference to array 
+    }
+
+    # try to find discinfo from cddbserver unless -n
+    if ( $nocddb == 0 ) {
+        &cddb;
+    } else {   
+        &nocddb;
+    }
+    
+}
+
+#
+# what to do with cddb success
+#
+
+sub cddb {
+    if ( &get_cdda_infos ) {
+        &rip_and_encode($total_tracks);
+    } else {
+        print STDERR "no cddb entry found or cddbserver unreachable\n";
+        &nocddb;
+    }
+}
+
+#
+# what to do without cddb or failed cddb
+#
+
+sub nocddb {
+    # if -q no questions will be asked
+    if ($quite == 1) {
+        &rip_and_encode($total_tracks,$trackname);
+    } else {
         &get_cddb_input;
-            
+
         if ( $answer eq "y" or $answer eq "Y" ) {
-        
-            # get artist name and disc name
             &get_artist_name;
             &get_disc_name;
-            
-            # get all names if you rip whole disc 
-            if ( ! @riptracks ) {
-                &get_track_name($total_tracks);
-            } else {
-                &get_track_name($#riptracks);
-            }
-           
-            # start ripping
+            &get_track_name($total_tracks);
             &rip_and_encode($total_tracks);
-        
         } else {
-            
             &rip_and_encode($total_tracks,$trackname);
-        
         }
-    } 
+    }
 }
 
 #
@@ -165,73 +165,89 @@ if ($#ARGV == -1) {
 
 sub rip_and_encode {
     
-    # print artist and dic title, but only when known
+    my $trackname_prefix="";
+    my $total;  # total sum of tracks to rip
+    my @tracks; # array of integers, tracks to rip
+    my $command; # execute this
+    
+    # print artist and disc title, but only when known
     if ($artist && $disc_title) {       
         &print_disc_title;  
     }
     
-    my $trackname_prefix="";
-
+    # how the function is called 
     if (@_) {
-        $total_tracks=$_[0];
+        unless (ref($total_tracks)) {
+            $total=$_[0];
+            my $i=1;
+            while($i<=$total) { push(@tracks, $i); $i++; };
+        } else {
+            $total=scalar(@{$_[0]});
+            @tracks=@{$_[0]};
+            # check if the values are correct
+            my $i=0;
+            while($i<=$#tracks) { 
+                if ($tracks[$i] > &get_disc_tracks) { 
+                    print STDERR "$tracks[$i] is greater than tracks on your disc\n";
+                    exit 1;
+                }
+                $i++; 
+            }
+        }    
         $trackname_prefix=$_[1];
     }
     
+    # be verbose or quit
     if ( $verbose != 0 ) {
-        $quiet = "";
+        $null = "";
+    } else {
+        print "\n Ripping and encoding...\n";
+    }
+    
+    # set ripper & encoderflags
+    $cdpflags= $cdpflags . " " . $cdpflags_default . " " . "-d $cdrom";
+    $oggencflags= $oggencflags . " " . $oggencflags_default . " " . "-b $bitrate";
+
+    if ($debug == 1 ) {
+        print STDERR "Ripperflags: $cdpflags\n";
+        print STDERR "Encoderflags: $oggencflags\n";
+    }     
+
+    # some debugging info
+    if ($debug == 1) {
+        print STDERR "Total Tracks to rip: $total \n";
+        print STDERR "Following tracks: @tracks \n"; 
     }
 
-    if ( $verbose == 0) {
-        print "\n Ripping and encoding...";
-    }
-   
-    if ( !@riptracks ) {
-   
-        for (my $i=1; $i <= $total_tracks; $i++) {
+    for (my $i=1; $i <= $total; $i++) {
             
-            if (! $trackname_prefix ) {
-                $trackname="$artist - $tracks[$i-1]";
-            } else {
-                $trackname="$trackname_prefix$i";
-            }
-            
-            my $command = "$cdparanoia $cdpflags $i \"$trackname.wav\" $quiet ";
-            `$command`;
-            $command = "$oggenc $oggencflags \"$trackname.wav\" $quiet ";
-            `$command`;
-            
-            if ( $holdwav != 1) {
-                $command = "rm -f -- \"$trackname.wav\" $quiet ";
-                `$command`;
-            }
+        if (! $trackname_prefix ) {
+            $trackname="$artist - $titles[$i-1]";
+        } else {
+            $trackname="$trackname_prefix$tracks[$i-1]";
         }
 
-    } else {
-
-        for (my $i=0; $i <= $#riptracks; $i++) {
-        
-            if (! $trackname_prefix ) {
-                $trackname="$artist - $tracks[$i]";
-            } else {
-                $trackname="$trackname_prefix$riptracks[$i]";
+        $command = "$cdparanoia $cdpflags $tracks[$i-1] \"$trackname.wav\" $null ";
+        if ($debug == 1) {
+            print STDERR "execute commandline: $command\n";
+        }
+        `$command`;
+        $command = "$oggenc $oggencflags \"$trackname.wav\" $null ";
+        if ($debug == 1) {
+            print STDERR "execute commandline: $command\n";
+        }
+        `$command`;
+            
+        if ( $holdwav != 1) {
+            $command = "rm -f -- \"$trackname.wav\" $null ";
+            if ($debug == 1) {
+                print STDERR "execute commandline: $command\n";
             }
-
-            my $command = "$cdparanoia $cdpflags $riptracks[$i] \"$trackname.wav\" $quiet ";
             `$command`;
-            $command = "$oggenc $oggencflags \"$trackname.wav\" $quiet ";
-            `$command`;
-
-            if ( $holdwav != 1) {
-                $command = "rm -f -- \"$trackname.wav\" $quiet ";
-                `$command`;
-            }
-        }    
-
-        $total_tracks=$#riptracks+1;
-
+        }
     }
 
-    print "\n successfully ripped $total_tracks tracks!\n"     
+    print "\n successfully ripped $total tracks!\n"     
     
 }
 
@@ -240,7 +256,7 @@ sub rip_and_encode {
 #
 
 sub get_cdda_infos { 
-    
+    my $total; 
     my $cddb = new FreeDB;
 
     $cddb->cddb_server($cddbserver);
@@ -249,7 +265,7 @@ sub get_cdda_infos {
 
     if (!$success) {
         print "\n\nCouldn't fetch or find CD info from $cddbserver\n\n";
-        return $success;
+        return 1;
     }
 
     $artist = $cddb->artist;    # fetch name of artist(s)
@@ -258,13 +274,13 @@ sub get_cdda_infos {
     $disc_title = $cddb->title; # fetch the CD title
     $disc_title =~ s/"/\\"/ ;   # remove line feed at end of string
 
-    $total_tracks = $cddb->total_tracks;
-    @tracks = $cddb->track_info;
+    $total = $cddb->total_tracks;
+    @titles = $cddb->track_info;
 
-    for (my $i=0; $i < $total_tracks; $i++) {
-       $tracks[$i] =~ s/"/\\"/ ;
-       #print "$tracks[$i]\n";
+    for (my $i=0; $i < $total; $i++) {
+       $titles[$i] =~ s/"/\\"/ ;
     }
+    return 0;
 }
 
 #
@@ -323,6 +339,10 @@ sub parse_command_line {
             }
             elsif ($_[0] eq "-b" or $_[0] eq "--bitrate") {
                 shift; $bitrate = shift;    # bitrate to encode files with
+                unless ($bitrate =~ m/(112|128|160|192|256|350)/) {
+                    print STDERR "Unrecognized bitrate: $bitrate\n\n";
+                    print STDERR usage(); exit 1; 
+                }   
             }
             elsif ($_[0] eq "-c" or $_[0] eq "--config") {
                 shift; parse_config_file (shift);# use config file <filename>
@@ -335,6 +355,9 @@ sub parse_command_line {
             }
             elsif ($_[0] eq "-n" or $_[0] eq "--nocddb") {
                 shift; $nocddb = 1;         # do not use CDDB if 1
+            }
+            elsif ($_[0] eq "-q" or $_[0] eq "--quite") {
+                shift; $quite = 1;        # be verbose if 1
             }
             elsif ($_[0] eq "-v" or $_[0] eq "--verbose") {
                 shift; $verbose = 1;        # be verbose if 1
@@ -358,6 +381,10 @@ sub parse_command_line {
         } elsif ($_[0]) {
             if ($_[0] eq "all") {
                 shift; $all=1;              # whole disc?
+            }
+            elsif ($_[0] =~ m/[^0-9,]/) {
+                print STDERR "Unrecognized option: $_[0]\n\n";
+                print STDERR usage(); exit 1;
             }
             elsif ($_[0] =~ m/(([0-9],?)+)/) {
                 shift; @riptracks=split /,/, $1;       # some tracks
@@ -408,15 +435,16 @@ options:
                              [default=""]
   -b or --bitrate <bitrate>  use <bitrate> for encoding [112,128,160,192,256,350]
                              [default=160]
-  -s or --server <host>      use <host> as CDDB server
+  -s or --server <url>       use <url> to ask CDDB server
                              [default="http://freedb.freedb.org/cgi-bin/cddb.cgi"]
   -n or --nocddb             do not attempt CDDB lookup
   -w or --holdwav            do not delete wav files after encoding
   -d or --device <device>    cdrom\/dvd device 
                              [default=/dev/cdrom]
-  -t or --trackname "string" use "string" as track name format string
-                             [default="artist - trackname"] (not working)
+  -t or --trackname "string" use "string" as trackprefix name for tracktitles
+                             [default="track"] 
   -v or --verbose            verbose output, print original output to STDOUT
+  -q or --quite              do not ask any fu.. questions
   -V or --version            print version
   -h or --help               print help message
 
@@ -449,8 +477,9 @@ sub get_disc_tracks {
     my $cdromheader = ""; 
     my $result;
     my $start;
-    open(CDROM, $cdrom);
-    $result = ioctl(CDROM, 0x5305, $cdromheader) || die "can't access $!";    
+    open(CDROM, $cdrom) || die "$! - Please insert a audio disc in your drive or check permissions
+    on $cdrom\n";
+    $result = ioctl(CDROM, 0x5305, $cdromheader);    
     ($start, $total_tracks) = unpack('CC', $cdromheader);
     close(CDROM);
     return $total_tracks;
@@ -494,15 +523,15 @@ sub get_track_name {
     if ( ! @riptracks ) {
         for (my $i=1; $i <= $total_tracks; $i++) {
             print "Please tell me the title of track $i:\n";
-            chomp($tracks[$i-1] = <STDIN>);
+            chomp($titles[$i-1] = <STDIN>);
         }
     } else {
         for (my $i=0; $i <= $#riptracks; $i++) {
             print "Please tell me the title of track $riptracks[$i]:\n";
-            chomp($tracks[$i] = <STDIN>);
+            chomp($titles[$i] = <STDIN>);
         } 
     }
-    return @tracks;
+    return @titles;
 }        
 
 
@@ -512,7 +541,7 @@ CDDA2OGG - Compact Disc Digital Audio to Ogg/Vorbis
 
 =head1 SYNOPSIS
 
-cdda2ogg       B<--help>
+cdda2ogg       B<--help> B<--verbose> B<--device> I<devicename> B<--quiet>
 
 =head1 DESCRIPTION
 
