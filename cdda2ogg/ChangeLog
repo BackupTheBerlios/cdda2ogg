@@ -1,0 +1,12 @@
+-----------------------------------
+cdda2ogg - ChangeLog
+-----------------------------------
+
+0.3.0 Waldemar Brodkorb <waldemar@thinknow.de> 19.09.2001
+    - first official release 
+    - cleanup to make the source more readable
+
+prior 0.3.0 Waldemar Brodkorb <waldemar@thinknow.de>
+    - some wild hacking ;)
+    - first perl experience
+
