@@ -1,0 +1,21 @@
+#
+# sample configuration for cdda2ogg
+# 
+# for global configuration, copy this file to /etc/cdda2oggrc
+# "su -c "cp cdda2oggrc.sample /etc/cdda2oggrc"
+#
+# for per user configuration copy this file to 
+# $HOME/.cdda2oggrc
+# "cp cdda2oggrc.sample ~/.cdda2oggrc
+#
+# FORMAT:
+# key value
+
+# CDROM-Device to use, overridden by -d 
+cdrom=/dev/scd1
+
+# bitrate 112|128|160|192|256|350
+bitrate 160
+
+# output format
+output %a/%t
