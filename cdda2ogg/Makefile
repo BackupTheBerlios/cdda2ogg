@@ -5,7 +5,7 @@ DESTDIR=
 PREFIX=usr/local
 DOCDIR=${PREFIX}/share/doc
 PERL=/usr/bin/perl
-VERSION=0.2.5
+VERSION=0.3.0
 
 default	:	cdda2ogg.pl cdda2ogg.1 cdda2ogg.html cdda2ogg.ps
 
