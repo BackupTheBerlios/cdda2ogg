@@ -278,6 +278,6 @@ sub print_disc_title {
 print "\n\n\n";
 print "The inserted disc is '$disc_title' from '$artist'.\n";
 print "--------------------------------------------------------------------------------\n\n";
-print "Hope you\'ll enjoy their music as Ogg Vorbis file with $bitrate bits/sec.!\n\n";
+print "Hope you\'ll enjoy their music as Ogg Vorbis file with $bitrate kbits/sec.!\n\n";
 }
 
