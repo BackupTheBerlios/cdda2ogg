@@ -229,7 +229,7 @@ sub parse_command_line {
 
 sub version {
 
-print "\n$cdda2ogg version $version\n\nCopyright 2001\n$author\nhttp://www.thinknow.de/cdda2og\n";
+print "\n$cdda2ogg version $version\n\nCopyright 2001\n$author\nhttp://cdda2ogg.berlios.de\n";
 print"- Released without any warranty under the terms of the GNU Public Licence -";
 }
 
