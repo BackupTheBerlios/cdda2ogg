@@ -1,0 +1,569 @@
+#!/usr/bin/perl -w
+# 
+#  CDDA2OGG
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+#  Authors: Waldemar Brodkorb <waldemar.brodkorb@web.de>
+#           Richard Höchenberger <GeekuX@web.de>
+#
+#  Program to encode Compact Disc Digital Audio to Ogg Vorbis
+#
+
+use strict;
+use FreeDB::FreeDB;
+
+my $author = "Waldemar Brodkorb <waldemar\@thinknow.de>\nRichard Höchenberger <GeekuX\@web.de>";
+
+my $cdda2ogg = $0; $cdda2ogg =~ s/.*\/([^\/]+)$/$1/;
+my $version = "%%VERSION%%";
+my $HOME = $ENV{HOME};
+
+
+#
+# programs & default flags
+#
+
+my $cdparanoia = `which cdparanoia`; $cdparanoia =~ s/\n//;
+my $cdpflags_default = "";
+my $cdpflags = $cdpflags_default;
+
+my $bitrate = "160";
+
+my $oggenc = `which oggenc`; $oggenc =~ s/\n//;
+my $oggencflags_default = "-b $bitrate";
+my $oggencflags = $oggencflags_default;
+
+my $trackname_default = "track";
+my $trackname = "$trackname_default";
+
+my $holdwav = 0;
+my $cdrom = "/dev/cdrom";
+
+my $cddbserver = "http://freedb.freedb.org/cgi-bin/cddb.cgi";
+my $nocddb = 0;
+
+my $artist;
+my $disc_title;
+my @tracks;
+my $total_tracks;
+
+my $quiet = "2>&1 > /dev/null";
+my $verbose = 0;
+my $success = 0;
+my $answer = "";
+my $all = 0;
+my @riptracks;
+
+#
+# the main program starts here
+#
+
+# when no arguments given, print usage and version
+
+if ($#ARGV == -1) {
+
+    &version; 
+    print usage();
+
+# else begin with the fun
+    
+} else {
+    # parse configfiles and arguments
+    parse_config_file("/etc/cdda2oggrc");
+    parse_config_file("$HOME/.cdda2oggrc");
+    parse_command_line(@ARGV);
+    
+    if ($all == 0 && ! @riptracks) {
+        &version; 
+        print usage();
+        print "\n ------  What do you want to rip, geek? ------ \n\n";
+        #print "$#riptracks\n";
+        exit 1;
+    }
+    
+    # check if encoder and ripper exists
+    &check_apps;
+
+    if ( $nocddb == 0 ) {
+        # try to find discinfo from cddbserver
+        &get_cdda_infos;
+        
+        if ($success == 0) {
+            # get total amount of tracks
+            &get_disc_tracks;
+            # if not successful, ask user for artist and tracknames
+            &get_cddb_input;
+            
+            if ( $answer eq "y" or $answer eq "Y" ) {
+                &get_artist_name;
+                &get_disc_name;
+                # get all names if you rip whole disc 
+                if ( ! @riptracks ) {
+                    &get_track_name($total_tracks);
+                } else {
+                    &get_track_name($#riptracks);
+                }
+                
+                &rip_and_encode($total_tracks);
+
+            } else {
+                
+                &rip_and_encode($total_tracks,$trackname);
+            
+            }
+            
+        } else {
+            # if successful rip and encode
+            &rip_and_encode;
+            
+        }
+
+    } else {
+        # if -x, no cddb server is asked, begin with ripping
+        &get_cddb_input;
+            
+        if ( $answer eq "y" or $answer eq "Y" ) {
+        
+            # get artist name and disc name
+            &get_artist_name;
+            &get_disc_name;
+            
+            # get all names if you rip whole disc 
+            if ( ! @riptracks ) {
+                &get_track_name($total_tracks);
+            } else {
+                &get_track_name($#riptracks);
+            }
+           
+            # start ripping
+            &rip_and_encode($total_tracks);
+        
+        } else {
+            
+            &rip_and_encode($total_tracks,$trackname);
+        
+        }
+    } 
+}
+
+#
+# rip and encode the stuff!
+#
+
+sub rip_and_encode {
+    
+    # print artist and dic title, but only when known
+    if ($artist && $disc_title) {       
+        &print_disc_title;  
+    }
+    
+    my $trackname_prefix="";
+
+    if (@_) {
+        $total_tracks=$_[0];
+        $trackname_prefix=$_[1];
+    }
+    
+    if ( $verbose != 0 ) {
+        $quiet = "";
+    }
+
+    if ( $verbose == 0) {
+        print "\n Ripping and encoding...";
+    }
+   
+    if ( !@riptracks ) {
+   
+        for (my $i=1; $i <= $total_tracks; $i++) {
+            
+            if (! $trackname_prefix ) {
+                $trackname="$artist - $tracks[$i-1]";
+            } else {
+                $trackname="$trackname_prefix$i";
+            }
+            
+            my $command = "$cdparanoia $cdpflags $i \"$trackname.wav\" $quiet ";
+            `$command`;
+            $command = "$oggenc $oggencflags \"$trackname.wav\" $quiet ";
+            `$command`;
+            
+            if ( $holdwav != 1) {
+                $command = "rm -f -- \"$trackname.wav\" $quiet ";
+                `$command`;
+            }
+        }
+
+    } else {
+
+        for (my $i=0; $i <= $#riptracks; $i++) {
+        
+            if (! $trackname_prefix ) {
+                $trackname="$artist - $tracks[$i]";
+            } else {
+                $trackname="$trackname_prefix$riptracks[$i]";
+            }
+
+            my $command = "$cdparanoia $cdpflags $riptracks[$i] \"$trackname.wav\" $quiet ";
+            `$command`;
+            $command = "$oggenc $oggencflags \"$trackname.wav\" $quiet ";
+            `$command`;
+
+            if ( $holdwav != 1) {
+                $command = "rm -f -- \"$trackname.wav\" $quiet ";
+                `$command`;
+            }
+        }    
+
+        $total_tracks=$#riptracks+1;
+
+    }
+
+    print "\n successfully ripped $total_tracks tracks!\n"     
+    
+}
+
+#
+# fetch the CD info from CDDB server
+#
+
+sub get_cdda_infos { 
+    
+    my $cddb = new FreeDB;
+
+    $cddb->cddb_server($cddbserver);
+    $cddb->cdrom_device($cdrom);
+    $success = $cddb->fetch;
+
+    if (!$success) {
+        print "\n\nCouldn't fetch or find CD info from $cddbserver\n\n";
+        return $success;
+    }
+
+    $artist = $cddb->artist;    # fetch name of artist(s)
+    $artist =~ s/"/\\"/ ;       # remove line feed at end of string
+
+    $disc_title = $cddb->title; # fetch the CD title
+    $disc_title =~ s/"/\\"/ ;   # remove line feed at end of string
+
+    $total_tracks = $cddb->total_tracks;
+    @tracks = $cddb->track_info;
+
+    for (my $i=0; $i < $total_tracks; $i++) {
+       $tracks[$i] =~ s/"/\\"/ ;
+       #print "$tracks[$i]\n";
+    }
+}
+
+#
+# can cdparanoia and oggenc be found?
+#
+
+sub check_apps {
+    unless( -x $oggenc ) {
+        print STDERR "couldn't find or execute oggenc in $oggenc\n";
+        exit 1;
+    }
+    unless( -x $cdparanoia ) {
+        print STDERR "couldn't find or execute cdparanoia in $cdparanoia\n";
+        exit 1;
+    }
+
+}
+
+#
+# subroutine for configfile parsing
+#
+
+sub parse_config_file {
+    my $CDDA2OGGRC = $_[0];
+    my $i=0;
+    open RC, $CDDA2OGGRC or return;
+    while (<RC>) {
+        $i++;
+        if (! (/^[\#;]/ || /^\s*$/)) {    # ignore comments and blank lines
+            /^\s*(\S*)\s*=?\s*(.*)\s*$/;  # grab useful bits from line
+            my @line = ("-$1", $2);
+            parse_command_line (@line);
+        }
+    }
+}
+
+#
+# subroutine for commandline parsing
+#
+
+sub parse_command_line {
+    while (@_) {
+        # options parser
+        if ($_[0] =~ m/-/) {
+            if ($_[0] eq "-r" or $_[0] eq "--ripper") {
+                shift; $cdparanoia = shift; # specify path to cdparanoia
+            }
+            elsif ($_[0] eq "--ripperflags") {
+                shift; $cdpflags = shift;   # flags to be passed to cdparanoia
+            }
+            elsif ($_[0] eq "-e"  or $_[0] eq "--encoder") {
+                shift; $oggenc = shift;     # path to oggenc
+            }
+            elsif ($_[0] eq "--encoderflags") {
+                shift; $oggencflags = shift;# flags to be passed to oggenc
+            }
+            elsif ($_[0] eq "-b" or $_[0] eq "--bitrate") {
+                shift; $bitrate = shift;    # bitrate to encode files with
+            }
+            elsif ($_[0] eq "-c" or $_[0] eq "--config") {
+                shift; parse_config_file (shift);# use config file <filename>
+            }
+            elsif ($_[0] eq "-s" or $_[0] eq "--server") {
+                shift; $cddbserver = shift; # defines CDDB server
+            }
+            elsif ($_[0] eq "-d" or $_[0] eq "--device") {
+                shift; $cdrom = shift;      # ripping device
+            }
+            elsif ($_[0] eq "-n" or $_[0] eq "--nocddb") {
+                shift; $nocddb = 1;         # do not use CDDB if 1
+            }
+            elsif ($_[0] eq "-v" or $_[0] eq "--verbose") {
+                shift; $verbose = 1;        # be verbose if 1
+            }
+            elsif ($_[0] eq "-w" or $_[0] eq "--holdwav") {
+                shift; $holdwav = 1;        # do not delete .wav files if 1
+            }
+            elsif ($_[0] eq "-t" or $_[0] eq "--trackname") {
+                shift; $trackname = shift;  # define track name format?
+            }
+            elsif ($_[0] eq "-h" or $_[0] eq "--help") {
+                print usage(); exit 0;      # print out usage on screen
+            }
+            elsif ($_[0] eq "-V" or $_[0] eq "--version") {
+                print "$version\n"; exit 0;    # print out version number on screen
+            } else {
+                print STDERR "Unrecognized option: $_[0]\n\n";
+                print STDERR usage(); exit 1;
+            }    
+        # commandline parser    
+        } elsif ($_[0]) {
+            if ($_[0] eq "all") {
+                shift; $all=1;              # whole disc?
+            }
+            elsif ($_[0] =~ m/(([1-9],?)+)/) {
+                shift; @riptracks=split /,/, $1;       # some tracks
+            } else {
+                print STDERR "Unrecognized option: $_[0]\n\n";
+                print STDERR usage(); exit 1;
+            }    
+        }    
+	
+	# if nothing of the above matches...
+
+        else {
+            print STDERR "Unrecognized option: $_[0]\n\n";
+            print STDERR usage(); exit 1;
+        }
+    }
+}
+
+
+#
+# print out version number, authors and license
+#
+
+sub version {
+
+    print "\n$cdda2ogg version $version\n\nCopyright 2001\n$author\nhttp://cdda2ogg.berlios.de\n";
+    print "- Released without any warranty under the terms of the GNU Public Licence -\n\n";
+
+}
+
+#
+# print out usage
+#
+
+sub usage {
+    return sprintf  <<END
+usage: $cdda2ogg [options] tracks 
+        
+options:
+  -c or --config <filename>  read <filename> as cdda2ogg configuration file
+  -r or --ripper <path>      specify <path> to ripper
+                             [default=/usr/bin/cdparanoia]
+  --ripperflags "flags"      pass "flags" to ripper
+                             [default=""]
+  -e or --encoder <path>     specify <path> to encoder
+                             [default=/usr/bin/oggenc]
+  --encoderflags "flags"     pass "flags" to encoder
+                             [default=""]
+  -b or --bitrate <bitrate>  use <bitrate> for encoding [112,128,160,192,256,350]
+                             [default=160]
+  -s or --server <host>      use <host> as CDDB server
+                             [default="http://freedb.freedb.org/cgi-bin/cddb.cgi"]
+  -n or --nocddb             do not attempt CDDB lookup
+  -w or --holdwav            do not delete wav files after encoding
+  -d or --device <device>    cdrom\/dvd device 
+                             [default=/dev/cdrom]
+  -t or --trackname "string" use "string" as track name format string
+                             [default="artist - trackname"] (not working)
+  -v or --verbose            verbose output, print original output to STDOUT
+  -V or --version            print version
+  -h or --help               print help message
+
+tracks: 
+    could be "all" or comma separated list of tracknumbers
+    example: 2,3,15  
+    
+END
+      ;
+}
+
+#
+# this procedure prints out the disc title and artist on startup
+#
+
+sub print_disc_title {
+
+print "\n\n\n";
+print "The inserted disc is '$disc_title' from '$artist'.\n";
+print "--------------------------------------------------------------------------------\n\n";
+print "Hope you\'ll enjoy their music as Ogg Vorbis file with $bitrate bits/sec.!\n\n";
+
+}
+
+#
+# get the number of audiotracks, returns an integer
+# 
+
+sub get_disc_tracks {
+    my $cdromheader = ""; 
+    my $result;
+    my $start;
+    open(CDROM, $cdrom);
+    $result = ioctl(CDROM, 0x5305, $cdromheader) || die "can't access $!";    
+    ($start, $total_tracks) = unpack('CC', $cdromheader);
+    close(CDROM);
+    return $total_tracks;
+}
+
+#
+# ask if the user want to give needed information, returns a string
+#
+
+sub get_cddb_input {
+    print "Do you want to tell me artistname and tracktitle's? (y/n)\n";
+    chomp($answer = <STDIN>);
+    return $answer;
+}
+
+#
+# ask for artistname, returns a string
+#
+
+sub get_artist_name {
+    print "Please tell me the name of the artist:\n";
+    chomp($artist = <STDIN>);  
+    return $artist;
+}   
+
+#
+# ask for disc title
+#
+
+sub get_disc_name {
+    print "Please tell me the name of the disc:\n";
+    chomp($disc_title = <STDIN>);  
+    return $disc_title;
+}   
+
+#
+# ask for tracktitles, returns an array 
+#
+
+sub get_track_name {
+    if ( ! @riptracks ) {
+        for (my $i=1; $i <= $total_tracks; $i++) {
+            print "Please tell me the title of track $i:\n";
+            chomp($tracks[$i-1] = <STDIN>);
+        }
+    } else {
+        for (my $i=0; $i <= $#riptracks; $i++) {
+            print "Please tell me the title of track $riptracks[$i]:\n";
+            chomp($tracks[$i] = <STDIN>);
+        } 
+    }
+    return @tracks;
+}        
+
+
+=head1 NAME
+
+CDDA2OGG - Compact Disc Digital Audio to Ogg/Vorbis
+
+=head1 SYNOPSIS
+
+cdda2ogg       B<--help>
+
+=head1 DESCRIPTION
+
+CDDA2OGG is a small script written in Perl. It can be used 
+to rip Audio CDs and encode the songs as Ogg/Vorbis file.
+
+=head1 OPTIONS
+
+=over
+
+=item B<--help>
+
+Prints a short summary of options.
+
+=back
+
+=head1 EXAMPLES
+
+For ripping the whole audio disc in your cdrom drive:
+        
+C<cdda2ogg -d /dev/cdrom all>
+
+=head1 RESTRICTIONS
+
+Up to now CDDA2OGG does not support uploading of CDDB data. 
+You can't configure the output naming at the moment. 
+Error handling is not very well.
+
+=head1 AUTHOR
+
+The CDDA2OGG project was created by Waldemar Brodkorb <waldemar@thinknow.de>
+My good friend Richard Höchenberger is helping me, and working on a
+GUI for CDDA2OGG.
+
+For more information on CDDA2OGG, see: http://cdda2ogg.berlios.de/
+
+=head1 LICENSE
+
+Copyright (C) 1999-2001 Waldemar Brodkorb <waldemar@thinknow.de>
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 675 Mass
+Ave, Cambridge, MA 02139, USA. 
+
+
